@@ -1,0 +1,35 @@
+l=/cfg/home
+
+sync_dir() {
+mkdir -p $l/$1
+rsync -av $1/ $l/$1
+}
+
+sync_passwd() {
+mkdir -p /cfg/home/etc && (cd /etc; cp passwd group shadow gshadow /cfg/home/etc)
+}
+
+case "$1" in
+  bt)
+    sync_dir /var/lib/bluetooth && echo bt config synced OK
+  ;;
+  cups)
+    sync_dir /etc/cups && echo cups synced OK
+    sync_dir /usr/share/cups && echo cups share synced OK
+  ;;
+  date|time)
+     echo "try ru.pool.ntp.org..."
+     ntpdate ru.pool.ntp.org
+  ;;
+  passwd)
+    sync_passwd
+  ;;
+  all)
+   $0 bt
+   $0 cups
+   $0 passwd
+  ;;
+  *)
+    echo "usage bt|cups|all|time|passwd"
+  ;;
+esac

@@ -1,0 +1,36 @@
+f="$1"
+
+if [ "$f" = "" ]; then
+ echo "usage umount2 <mount_point>"
+ return 1
+fi
+
+fnd=0
+
+for l in `mount | grep $f | awk '{print $3}'` ; do
+ let fnd=fnd+1
+ if  umount $l ; then
+   echo "normally umounted $l"
+ else 
+   echo "force umount $l"
+   for p in `lsof | grep $l | awk '{print $2}'` ; do
+     echo "soft kill proc $p"
+     kill $p
+   done
+   sleep 1
+   for p in `lsof | grep $l | awk '{print $2}'` ; do
+     echo "hard kill proc $p"
+     kill -9 $p
+   done
+   umount $l && echo "$l seems umounted"
+ fi
+done
+
+
+if [ "$fnd" = "0" ]; then
+ echo "'$f' not found in mount"
+ exit 2
+fi
+
+exit 0
+

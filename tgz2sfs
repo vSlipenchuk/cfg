@@ -1,0 +1,17 @@
+
+
+file="$1"
+
+if [ "$file" = "" ]; then
+  echo "usage: <tgz file>"
+fi
+
+name=`basename -s .tgz $file`
+
+rm -rf /tmp/tgz
+mkdir -p /tmp/tgz
+
+installpkg -root /tmp/tgz $file
+mksquashfs /tmp/tgz $name.sfs
+
+rm -rf /tmp/tgz

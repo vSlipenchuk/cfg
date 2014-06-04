@@ -1,0 +1,89 @@
+# nvidia flash tool wrapper
+
+abootimg=/home/bin/abootimg         # abootimg packer-unpacker tool
+nvflash=/home/bin/nvflash              # where we have nvflash
+#bootbin=/home/bin/fastboot.bin   # bootloader microcode (for 'open')
+bootbin=/home/bin/fastboot.stock.bin   # bootloader microcode (for 'open')
+
+case "$1" in
+  open)
+    echo try open device and load boot
+    $nvflash --bl $bootbin --sync
+  ;;
+  backup3)
+    echo "backup EBT, SOS, LNX (4, 5 and 6) partitions"
+    $nvflash -r --read 4 p4.img
+    $nvflash -r --read 5 p5.img
+    $nvflash -r --read 6 p6.img
+  ;;
+
+  backup56)
+    echo backup 5 and 6 partitions
+    $nvflash -r --read 5 p5.img
+    $nvflash -r --read 6 p6.img
+  ;;
+  write_recovery)
+    if [ -r "$2" ]; then
+     echo "restore recovery (5) partition from $2"
+     $nvflash -r --download 5 $2
+    else
+     echo "required filename.img for download 5 partition 5"
+    fi
+  ;;
+  write_boot)
+    if [ -r "$2" ]; then
+     echo "restore boot (6) partition from $2"
+     $nvflash -r --download 6 $2
+    else
+     echo "required filename.img for download  partition 6"
+    fi
+  ;;
+
+  backupfull)
+    echo "backing up 2-12 partitions"
+    if [ "$2" = "" ]; then
+      echo "backup_dir required as parameter"
+    else
+      mkdir -p $2
+      part="2 3 4 5 6 7 8 9 10 11 12"
+      for a in $part; do
+        echo begin backup partition $a
+        $nvflash -r --read $a $2/p$a.img || break
+      done
+    fi
+  echo done
+  ;;
+  restorefull)
+    echo "restore up 2-12 partitions"
+    if [ "$2" = "" ]; then
+      echo "backup_dir required as parameter"
+    else
+      mkdir -p $2
+      part=" 5 6 7 8 9 10 11 12"
+      for a in $part; do
+        #f=tac100-part-$a.img
+        f=$2/p$a.img
+        echo begin restore partition $a from file $f
+        $nvflash -r --download  $a $f || break
+      done
+    fi
+  echo done
+  ;;
+  pack)
+    if [ "$2" = "" ]; then
+      echo "error: unpack requires filename.img"
+    else
+      $abootimg --create $2 -f bootimg.cfg -k boot.zImage -r boot.cpio
+    fi
+  ;;
+  unpack)
+  if [ "$2" = "" ]; then
+      echo "error: pack requires filename.img"
+    else
+      $abootimg  -x $2  bootimg.cfg boot.zImage boot.cpio
+    fi
+  ;;
+  *)
+  echo "usage: open|backup56|backupfull|pack|unpack|write_boot|write_recovery"
+  ;;
+esac

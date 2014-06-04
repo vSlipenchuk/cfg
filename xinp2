@@ -1,0 +1,98 @@
+#
+# xinput externsions
+
+trackpoint='TPPS/2 IBM TrackPoint'
+touchpad='SynPS/2 Synaptics TouchPad'
+finger='Wacom ISDv4 E6 Finger touch'
+
+notify() {
+  notify-send -i xfce-utils  --expire-time=2000  --urgency normal "Touch state" "==== $1 ==="
+}
+
+do_enable() {
+xinput $1 "$trackpoint"
+xinput $1 "$touchpad"
+xinput $1 "$finger"
+#notify "$1 mouse in: $trackpoint $touchpad $finger"
+}
+
+
+case "$1" in
+ syn|synergy)
+   installpkg /d/distr32/office/synergy*tgz
+   synergy&
+   ;;
+ on|true|enable|1)
+   do_enable enable
+   echo 1 > /var/run/xinp2.state
+   notify "ALL ENABLED"
+   ;;
+ notrack)
+   xinput disable "$trackpoint"
+   ;;  
+ notouch)
+   xinput disable "$touchpad"
+   ;;
+ track2)
+   echo "change track buttons for $trackpoint"
+   xinput set-button-map  "$trackpoint" 1 9 3 0 0 0 0 
+   xinput set-prop "$trackpoint" "Evdev Wheel Emulation" 1
+   xinput set-prop "$trackpoint" "Evdev Wheel Emulation Button" 0
+   xinput set-prop "$trackpoint" "Evdev Wheel Emulation Timeout" 200
+   
+   #xinput query-state "$trackpoint"
+   #xinput set-prop "$trackpoint" "Evdev Wheel Emulation Axes" 0, 0, 4, 5
+   
+   xinput get-button-map "$trackpoint"
+   #xinput list-props "$trackpoint"
+   ;;
+ off|false|disable|0)
+   do_enable disable
+   echo 0 > /var/run/xinp2.state
+   notify "ALL DISABLED"
+   ;;
+  screen|2)
+   do_enable disable
+   xinput enable "$finger"
+   xinput enable "$touchpad"
+   notify "SCREEN ENABLED"
+   echo 2 > /var/run/xinp2.state
+   ;;
+  noscreen)
+   xinput disable "$finger"
+   echo 4 > /var/run/xinp2.state
+   ;;
+ tackle|trigger|toggle|track2)
+   s=`cat /var/run/xinp2.state`
+   #notify "state $s"
+   for d in 0 1 2 3 ; do
+   export DISPLAY=:$d.0
+   case "$s" in
+     0)  $0 1;;
+     1)  $0 2;;
+     2)  $0 0;;
+     *)  $0 1;;
+   esac
+   done
+   ;;
+  book)
+   s=`cat /var/run/xinp2.state`
+   #notify "state $s"
+   for d in 0 1 2 3 ; do
+   export DISPLAY=:$d.0
+   case "$s" in
+     2)  
+         $0 on
+         /home/bin/scr_r normal
+         ;;
+     *)  
+         $0 screen
+         /home/bin/scr_r left
+         ;;
+   esac
+   done
+   ;;
+ *)
+ echo "usage on|off|tackle|screen|noscreen|notrack"
+ ;;
+esac

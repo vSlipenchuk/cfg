@@ -1,0 +1,5 @@
+tmp=/tmp/jpg_tmp
+name=`basename --suffix=.pdf "$1"`
+
+mkdir -p $tmp && rm -rf $tmp/*pg $tmp/pdf && cp "$name".pdf $tmp && cd $tmp\
+  && convert "$name".pdf "$name".jpg && convert *.jpg "$name".pdf && evince "$name".pdf

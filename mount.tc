@@ -1,0 +1,9 @@
+P=""
+
+if [ "$3" = "" ]; then
+ P="";
+else
+ P=" -p $3"
+fi
+
+truecrypt -t -k "" --protect-hidden=no $1 $2 $P

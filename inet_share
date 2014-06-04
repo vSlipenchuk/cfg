@@ -1,0 +1,53 @@
+if [ "$2" = "" ]; then
+ echo "usage: <command> client_iface inet_iface [net]"
+ echo " example: inet_share start eth0 wlan0 192.168.7 => share wlan0 connect for eth0 clients"
+else
+ iface="$2"
+fi
+
+if [ ! "$3" = "" ]; then
+ out="$3"
+fi
+
+if [ ! "$4" = "" ]; then
+ net="$4"
+fi
+
+iface=${iface:-eth0}
+out=${out:-wlan0}
+net=${net:-192.168.9}
+
+name=inet_share_$iface
+
+cat << EOF > /tmp/$name
+interface=$iface
+dhcp-range=$net.50,$net.150,255.255.255.0,12h
+dhcp-option=6, 8.8.8.8, 8.8.8.8
+EOF
+
+case "$1" in
+  start|share)
+    echo "Configure $name client_iface $iface out_network  $out  net $net"
+    ifconfig $iface $net.1/24 up
+    echo start dnsmasq for server $net.1/24
+    dnsmasq -C /tmp/$name --pid-file=/tmp/$name.pid
+    echo now start NAT to $out
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    iptables -t nat -A POSTROUTING --out-interface $out -j MASQUERADE
+    echo OK
+    ;;
+  stop)
+    echo "stop $name"
+    pid=`cat /tmp/$name.pid`
+    echo "KILL dnsmasq $pid"
+    kill -9 $pid
+    rm /tmp/$name.pid
+    iptables -t nat -D POSTROUTING --out-interface $out -j MASQUERADE
+    #echo 0 > /proc/sys/net/ipv4/ip_forward
+    ;;
+  log)
+    grep dnsmasq /var/log/messages
+    ;;
+  *)
+    echo "$0 stop|start|log"
+esac
