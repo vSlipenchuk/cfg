@@ -3,7 +3,9 @@
 logger wifi new status request %1
 
 #cfg=/cfg/auth/wifi.cfg
-cfg=/home/bin/mnt/wifi/wifi.cfg
+cfg=/tmp/wifi.cfg
+#/home/bin/mnt/wifi/wifi.cfg
+
 
 if [ "$iface" = "" ]; then
 iface=wlan0
@@ -20,8 +22,22 @@ wifi_stop() {
  dhcpcd -kill $iface
 }
 
+
+wifi_cfg_create() {
+cat << EOF > $cfg
+# autogen by /home/bin/wifi
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=0
+eapol_version=1
+EOF
+cat /home/wifi/net/* >> $cfg
+}
+
+
 wifi_start() {
 if [ "$1" = "" ]; then
+ echo Autogenerate cfg
+ wifi_cfg_create
  c=$cfg
 else
  c=/home/bin/mnt/wifi/$1
@@ -64,6 +80,28 @@ esac
 }
 
 case "$1" in
+ add|set)
+   name="$2"
+   pass="$3"
+   dsc="$4"
+   date=`date`
+   mkdir -p /home/wifi/net
+   echo "adding/reseting ssid:$name and pass:$pass comment:$dsc"
+ cat << EOF > /home/wifi/net/$name
+# $dsc auto-generated on $date
+network={
+  scan_ssid=1
+  ssid="$name"
+  proto=WPA RSN
+  key_mgmt=WPA-PSK
+  pairwise=CCMP TKIP
+  group=CCMP TKIP WEP104 WEP40
+  psk="$pass"
+  priority=10
+}
+EOF
+
+ ;;
  clone)
    echo "create new iface wlan1 (managed)"
      #iw phy phy0 interface add wlan0 type __ap
