@@ -1,0 +1,51 @@
+
+
+# apply local configs 
+. ~/config
+
+SSID=${SSID:-Linux}
+PASS=${PASS:-secret}
+NET=${NET:"192.168.99"}
+
+IFACE=${IFACE:-wlan0}
+OUT=${OUT:-eth0}  # interface for postrouting
+
+
+CFG=/tmp/hostapd.cfg
+
+
+cat >$CFG << EOF
+interface=$IFACE
+driver=nl80211
+#driver rtl871xdrv for Realtek 8192cu
+#driver=rtl871xdrv
+ssid=$SSID
+#country_code=RU
+hw_mode=g
+channel=1
+macaddr_acl=0
+wpa=3
+wpa_key_mgmt=WPA-PSK
+wpa_passphrase=$PASS
+wpa_pairwise=TKIP CCMP
+EOF
+
+cat >$CFG.dns << EOF
+bind-interfaces
+interface=wlan0
+dhcp-range=$NET.10,$NET.100
+EOF
+
+killall hostapd
+ifconfig $IFACE $NET.1 
+ifconfig $IFACE up
+hostapd  -d $CFG & 
+#hostapd -B $CFG && echo hostapd started on $IFACE
+
+killall dnsmasq
+dnsmasq -C $CFG.dns
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+/sbin/iptables -t nat -A POSTROUTING -o $OUT -j MASQUERADE
+
+echo Started $SSID/$PASS on iface=$IFACE with NET $NET with NAT to $OUT

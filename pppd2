@@ -1,0 +1,114 @@
+#!/bin/bash
+
+DEVICE=${DEVICE:-"/dev/ttyUSB0"}
+OPTIONS=${2:-"debug updetach"}
+
+
+gen_me() {
+
+APN=${APN:-"internet.beeline.ru"}
+NUM=${NUM:-"*99***1#"}
+#NUM=${NUM:-"*99#"}
+USER=${USER:-"mts"}
+PASS=${PASS:-"$USER"}
+
+
+
+cat << EOF > /tmp/pppd2.chat
+TIMEOUT 5
+ECHO    ON
+ABORT   '\nBUSY\r'
+ABORT   '\nERROR\r'
+ABORT   '\nNO ANSWER\r'
+ABORT   '\nNO CARRIER\r'
+ABORT   '\nNO DIALTONE\r'
+ABORT   '\nRINGING\r\n\r\nRINGING\r'
+''              \rAT
+TIMEOUT 12
+OK              ATH
+OK              ATE1
+OK              AT+CGDCONT=1,"IP","$APN"
+OK              ATD$NUM
+CONNECT
+EOF
+
+mkdir -p /etc/ppp/peers
+
+cat << EOF > /etc/ppp/peers/pppd2
+connect '/usr/sbin/chat -v -f /tmp/pppd2.chat'
+ lock 
+ noauth
+ updetach
+ debug
+ novjccomp 
+ nopcomp 
+ noaccomp 
+ nodeflate 
+ novj
+ nobsdcomp
+ default-asyncmap
+ ipcp-accept-local
+ ipcp-accept-remote
+ noipdefault
+ defaultroute
+  :
+usepeerdns
+user $USER
+password $PASS
+EOF
+
+echo "generated for USER/PASS=$USER/$PASS APN=$APN"
+}
+
+call_me() {
+gen_me
+echo NOW CALL call pppd2 $DEVICE $OPTIONS
+pppd call pppd2 $DEVICE $OPTIONS
+}
+
+case "$1" in
+  pin)
+    gmodem -D /dev/ttyUSB0 pin$2 "exit"
+  ;;
+  yota)
+    USER=" "; APN="internet.yota"; #NUM="*99#";
+    call_me
+  ;;
+  bee)
+    $0 pin 5555
+    USER="beeline"; APN="internet.beeline.ru"
+    call_me
+  ;;
+  home)
+    USER="beeline"; APN="home.beeline.ru";
+    call_me
+  ;;
+  vtell|v-tell)
+    USER=vtell; APN="internet.v-tell.com"
+    NUM="*99#"
+    call_me
+  ;;
+  mts)
+    $0 pin 1111
+  USER="mts"; APN="internet.mts.ru";
+    call_me
+  ;;
+  mega)
+  USER="gdata";  APN="internet.megafon.ru";
+    call_me;
+  ;;
+  bal|balance)
+   gmodem -D /dev/ttyUSB2 balance exit
+  ;;
+  reg)
+   gmodem -D /dev/ttyUSB2 at+creg? exit
+  ;;
+  cops)
+   gmodem -D /dev/ttyUSB2 at+cops? exit
+  ;;
+  *)
+  echo "usage: mts|bee|mega|home"
+  ;;
+esac
+
+

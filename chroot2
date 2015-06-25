@@ -1,0 +1,56 @@
+MNT="/dev /proc /sys /dev/pts /tmp /etc/resolv.conf"
+MNT="$MNT /mnt/cdrom /var/run/dbus $EXMNT"
+
+txtred='\e[0;31m' # Red
+txtgrn='\e[0;32m' # Green
+txtcyn='\e[0;36m' # Cyan
+txtreset='\e[0m'       # Text Reset
+
+export LC_ALL=C
+
+if [ -d "$1"  ]; then
+ echo  -ne "$txtcyn<chroot:$1:>"
+else
+ echo "FAIL: no dir $1"
+ exit
+fi
+
+root=$(cd $1; pwd)
+
+UMNT=""
+for d in $MNT
+do
+ mount -o bind $d $root/$d 2> /dev/null
+ if [ "$?" = "0" ]; then
+  echo -ne "$txtgrn[$d]$txtreset"
+  UMNT="$d $UMNT"
+ else
+  echo -ne "$txtred[$d]$txtreset"
+ fi
+ done
+
+echo 
+
+#echo "START chroot `cat $root/etc/HOSTNAME` in  $root UMNT=$UMNT"
+  shift
+  #set | grep PS1
+  export PS1="\u@$root" 
+  export debian_chroot=$root
+  #set | grep PS1
+  chroot $root $@
+  #echo "DONE $root welcome back to `cat /etc/HOSTNAME`"
+  
+for d in $UMNT
+do
+ umount  $root/$d
+ if [ "$?" = "0" ]; then
+  echo -ne "$txtgrn[$d]$txtreset"
+  UMNT="$d $UMNT"
+ else
+  echo "fail umount $d"
+  fi
+done
+
+echo -ne "\n$txtcyn<done_chroot:$root welcome back to `cat /etc/HOSTNAME`>$txtreset\n"
+
+
